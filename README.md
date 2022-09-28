@@ -13,7 +13,7 @@ npx nodemon
 Build a docker image by typing the following from the project root directory:
 
 ```bash
-docker build -f Dockerfile.web -t se-backend .
+docker build -t se-backend .
 ```
 
 To see the details of the Docker image type the following command (requires [Docker desktop](https://www.docker.com/get-started/) installed on your computer):
@@ -68,15 +68,24 @@ docker stop se-backend-server
    * The Git repo on Heroku: `https://git.heroku.com/<THE_APP_NAME>.git`
    * The production URL: `https://<THE_APP_NAME>.herokuapp.com`
 
-4. Build and deploy to Heroku
+4. Build and deploy to Heroku by using one of the following options:
 
-   ```
-   git remote add heroku https://--THE-GIT-URL-ABOVE-
-   heroku container:login
-   heroku container:push web --recursive -a <THE_APP_NAME>
-   heroku container:release web -a <THE_APP_NAME>
-   ```
+   - Use the build instruction in `heroku.yml`
+  
+      ```
+      # Assuming "heroku" is associated with Heroku Git repo above
+      git push heroku
+      ```
+
+   - Manually push to Heroku registry
+  
+      ```
+      heroku git:remote -a <THE_APP_NAME>
+      heroku container:login
+      heroku container:push -a <THE_APP_NAME>
+      heroku container:release -a <THE_APP_NAME>
+      ```
 
 5. Confirm on your Heroku app dashbard (under the "Overview tab") that you have a web dyno enabled
 
-6. Verify your Heroku deployment by typing the following URL from a browser: `https://<THE_APP_NAME>.herokuapp.com/geo/sessions`
+6. Verify your Heroku deployment by typing the following URL from a browser: `https://<THE_APP_NAME>.herokuapp.com/geo/sessions` and expect to see "No active sessions detected"
