@@ -1,8 +1,8 @@
 import express, { Request, Response } from "express";
 import { createServer } from "http";
 import { Socket, Server } from "socket.io";
-import firebase from "firebase";
-import { firebaseFirestore } from "./firebase-backend";
+// import firebase from "firebase";
+// import { firebaseFirestore } from "./firebase-backend";
 import { DateTime } from "luxon";
 const app = express();
 const router = express.Router();
@@ -15,6 +15,14 @@ const server_io = new Server(my_server, {
   },
 });
 
+type StudioDetails = {
+  id: string,
+  instructor: string,
+  name: string,
+  participants: Array<string>
+}
+
+const availableStudios: Array<StudioDetails> = []
 server_io.on("connection", (socket: Socket) => {
   console.debug(`Got a new connection from client ${socket.id}`);
 
@@ -29,14 +37,17 @@ server_io.on("connection", (socket: Socket) => {
     //   });
   });
 
-  socket.on("teacher-join", async (args: any) => {
+  socket.on("teacher-join", (args: Omit<StudioDetails, "id" | "participants">, responseFn) => {
     socket.join(`chat-${socket.id}`);
     console.debug("Server received 'teacher-join' event", args, socket.id);
-    await firebaseFirestore.collection("sessions").doc(socket.id).set({
-      owner: args.who,
-      createdAt: DateTime.now().toUTC().toISO(),
-      members: [],
-    });
+    availableStudios.push({ id: socket.id, ...args, participants: [] })
+    console.debug("Sending response back to teacher client", socket.id)
+    responseFn(socket.id)
+    // await firebaseFirestore.collection("sessions").doc(socket.id).set({
+    //   owner: args.who,
+    //   createdAt: DateTime.now().toUTC().toISO(),
+    //   members: [],
+    // });
   });
 
   socket.on("teacher-leave", async () => {
@@ -45,7 +56,7 @@ server_io.on("connection", (socket: Socket) => {
     socket.leave(`chat-${socket.id}`);
     socket.leave(`cmd-${socket.id}`);
     socket.disconnect();
-    await firebaseFirestore.collection("sessions").doc(socket.id).delete();
+    // await collection(firebaseFirestore, "sessions").doc(socket.id).delete();
   });
 
   socket.on("ui-control", (args) => {
@@ -59,6 +70,11 @@ server_io.on("connection", (socket: Socket) => {
     else if (arg.room.startsWith("cmd-"))
       socket.to(arg.room).emit("bcast-cmd", arg.message);
   });
+
+  socket.on("studio-query", (responseFn) => {
+    console.debug("Get studio query request....")
+    responseFn(JSON.stringify(availableStudios))
+  })
 
   socket.on("student-join", async (arg: { session: string; who: string }) => {
     console.debug(
@@ -74,10 +90,10 @@ server_io.on("connection", (socket: Socket) => {
     const cmdRoom = `cmd-${arg.session}`; // For geometric commands
     socket.join(msgRoom);
     socket.join(cmdRoom);
-    await firebaseFirestore
-      .collection("sessions")
-      .doc(arg.session)
-      .update({ members: firebase.firestore.FieldValue.arrayUnion(arg.who) });
+    // await firebaseFirestore
+    //   .collection("sessions")
+    //   .doc(arg.session)
+    //   .update({ members: firebase.firestore.FieldValue.arrayUnion(arg.who) });
   });
 
   socket.on("student-leave", async (arg: { session: string; who: string }) => {
@@ -94,10 +110,10 @@ server_io.on("connection", (socket: Socket) => {
     const cmdRoom = `cmd-${arg.session}`; // For geometric commands
     socket.leave(msgRoom);
     socket.leave(cmdRoom);
-    await firebaseFirestore
-      .collection("sessions")
-      .doc(arg.session)
-      .update({ members: firebase.firestore.FieldValue.arrayRemove(arg.who) });
+    // await firebaseFirestore
+    //   .collection("sessions")
+    //   .doc(arg.session)
+    //   .update({ members: firebase.firestore.FieldValue.arrayRemove(arg.who) });
   });
 });
 
