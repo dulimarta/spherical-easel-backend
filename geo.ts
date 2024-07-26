@@ -1,6 +1,7 @@
 import express, { Request, Response } from "express";
 import { createServer } from "http";
 import { Socket, Server } from "socket.io";
+import { v1 as uuidv1 } from "uuid";
 // import firebase from "firebase";
 // import { firebaseFirestore } from "./firebase-backend";
 import { DateTime } from "luxon";
@@ -16,13 +17,31 @@ const server_io = new Server(my_server, {
 });
 
 type StudioDetails = {
-  id: string,
-  instructor: string,
-  name: string,
-  participants: Array<string>
-}
+  id: string;
+  instructor: string;
+  name: string;
+  participants: Array<string>;
+};
 
-const availableStudios: Array<StudioDetails> = []
+const availableStudios: Array<StudioDetails> = [];
+
+server_io.of("/").adapter.on("create-room", (room) => {
+  console.debug(`A new room ${room} was just created`);
+});
+server_io.of("/").adapter.on("delete-room", (room) => {
+  console.debug(`A new room ${room} was just deleted`);
+});
+
+server_io.of("/").adapter.on("join-room", (room, who) => {
+  if (who !== room) console.debug(`Socket ${who} just joined room ${room}`);
+  else console.debug(`Socket ${who} just joined its own room`);
+});
+
+server_io.of("/").adapter.on("leave-room", (room, who) => {
+  if (who !== room) console.debug(`Socket ${who} just left room ${room}`);
+  else console.debug(`Socket ${who} just left its own room`);
+});
+
 server_io.on("connection", (socket: Socket) => {
   console.debug(`Got a new connection from client ${socket.id}`);
 
@@ -37,24 +56,40 @@ server_io.on("connection", (socket: Socket) => {
     //   });
   });
 
-  socket.on("teacher-join", (args: Omit<StudioDetails, "id" | "participants">, responseFn) => {
-    socket.join(`chat-${socket.id}`);
-    console.debug("Server received 'teacher-join' event", args, socket.id);
-    availableStudios.push({ id: socket.id, ...args, participants: [] })
-    console.debug("Sending response back to teacher client", socket.id)
-    responseFn(socket.id)
-    // await firebaseFirestore.collection("sessions").doc(socket.id).set({
-    //   owner: args.who,
-    //   createdAt: DateTime.now().toUTC().toISO(),
-    //   members: [],
-    // });
-  });
+  /* Events that originate at a Teacher */
+  socket.on(
+    "open-studio",
+    (args: Omit<StudioDetails, "id" | "participants">, responseFn) => {
+      const studioId = uuidv1();
+      socket.join(studioId)
+      availableStudios.push({ id: studioId, ...args, participants: [] });
+      // socket.join(studioId)
+      // socket.join(`chat-${studioId}`);
 
-  socket.on("teacher-leave", async () => {
-    console.debug("Server received 'teacher-leave' event", socket.id);
-    socket.to(`chat-${socket.id}`).emit("studio-end");
-    socket.leave(`chat-${socket.id}`);
-    socket.leave(`cmd-${socket.id}`);
+      console.debug("Sending response back to teacher client", studioId);
+      responseFn(studioId);
+      // await firebaseFirestore.collection("sessions").doc(socket.id).set({
+      //   owner: args.who,
+      //   createdAt: DateTime.now().toUTC().toISO(),
+      //   members: [],
+      // });
+    }
+  );
+
+  socket.on("close-studio", async (studioId:string) => {
+    console.debug("Server received 'close-studio' event", studioId);
+    const pos = availableStudios.findIndex(s => s.id === studioId)
+    if (pos >= 0) {
+      console.debug("About to delete studio", availableStudios[pos].name)
+      availableStudios.splice(pos, 1)
+    } else {
+      console.debug(`Studio ${studioId} does not exist`)
+    }
+    socket.leave(studioId)
+    server_io.in(studioId).emit('studio-end')
+    // socket.to(`chat-${socket.id}`).emit("studio-end");
+    // socket.leave(`chat-${socket.id}`);
+    // socket.leave(`cmd-${socket.id}`);
     socket.disconnect();
     // await collection(firebaseFirestore, "sessions").doc(socket.id).delete();
   });
@@ -71,49 +106,62 @@ server_io.on("connection", (socket: Socket) => {
       socket.to(arg.room).emit("bcast-cmd", arg.message);
   });
 
+
+  /* Events that origingate at a student */
   socket.on("studio-query", (responseFn) => {
-    console.debug("Get studio query request....")
-    responseFn(JSON.stringify(availableStudios))
-  })
+    console.debug("Get studio query request....");
+    responseFn(JSON.stringify(availableStudios));
+  });
 
   socket.on("student-join", async (arg: { session: string; who: string }) => {
-    console.debug(
-      "Server received 'student-join' from ",
-      arg.who,
-      "to",
-      arg.session,
-      "on socket",
-      socket.id
-    );
-
-    const msgRoom = `chat-${arg.session}`; // For text messages
-    const cmdRoom = `cmd-${arg.session}`; // For geometric commands
-    socket.join(msgRoom);
-    socket.join(cmdRoom);
+    const pos = availableStudios.findIndex((z) => z.id === arg.session);
+    if (pos >= 0) {
+      const chatRoom = `chat-${arg.session}`; // For text messages
+      const cmdRoom = `cmd-${arg.session}`; // For geometric commands
+      socket.join(arg.session);
+      server_io.in(arg.session).emit('new-participant', arg.who)
+      // socket.join(chatRoom);
+      // socket.join(cmdRoom);
+      availableStudios[pos].participants.push(arg.who);
+    }
     // await firebaseFirestore
     //   .collection("sessions")
     //   .doc(arg.session)
     //   .update({ members: firebase.firestore.FieldValue.arrayUnion(arg.who) });
   });
 
-  socket.on("student-leave", async (arg: { session: string; who: string }) => {
+  socket.on("student-leave", async (arg: { session: string; who: string }, responseFn) => {
     console.debug(
-      "Server received 'student-leave' from ",
+      "Server received 'student-leave' by student ",
       arg.who,
-      "to",
+      "from studio",
       arg.session,
       "on socket",
       socket.id
     );
+    server_io.in(arg.session).emit('drop-participant', arg.who)
+    socket.leave(arg.session)
 
-    const msgRoom = `chat-${arg.session}`; // For text messages
-    const cmdRoom = `cmd-${arg.session}`; // For geometric commands
-    socket.leave(msgRoom);
-    socket.leave(cmdRoom);
+    const sessionIndex = availableStudios.findIndex(s => s.id === arg.session)
+    if (sessionIndex < 0) {
+      responseFn(false)
+    } else {
+      const participantIndex = availableStudios[sessionIndex].participants.findIndex(p => p === arg.who)
+      if (participantIndex < 0) {
+        responseFn(false)
+      } else {
+        availableStudios[sessionIndex].participants.splice(participantIndex, 1)
+        // const msgRoom = `chat-${arg.session}`; // For text messages
+        // const cmdRoom = `cmd-${arg.session}`; // For geometric commands
+        // socket.leave(msgRoom);
+        // socket.leave(cmdRoom);
+        responseFn(true)
+      }
     // await firebaseFirestore
     //   .collection("sessions")
     //   .doc(arg.session)
     //   .update({ members: firebase.firestore.FieldValue.arrayRemove(arg.who) });
+  }
   });
 });
 
@@ -129,7 +177,8 @@ router.get("/sessions", (req: Request, res: Response) => {
     res.write("<h1>List of rooms</h1>");
     res.write("<ol>");
     for (let r of rooms.keys()) {
-      if (r.startsWith("chat-")) res.write(`<li>${r}</li>`);
+      const thisRoom = rooms.get(r)!
+      res.write(`<li>Room <code>${r}</code>: with participants ${Array.from(thisRoom?.values())}</li>`);
     }
     res.write("</ol>");
   } else {
@@ -147,7 +196,7 @@ router.get("/sessions", (req: Request, res: Response) => {
 // The last component of the path below must match the
 // File name under src/app-server
 app.use("/.netlify/functions/geo", router);
-app.use("/geo", router);
+app.use("/", router);
 const port = process.env.PORT || 4000;
 my_server.listen(port, () => {
   console.log(`ExpressJS server listening on port ${port}`);

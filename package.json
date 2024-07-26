@@ -4,18 +4,20 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "exp:serve": "nodemon geo.ts"
+    "serve": "nodemon --watch geo.ts"
   },
   "dependencies": {
     "express": "^4.17.2",
-    "firebase": "^10.12.4",
     "luxon": "^3.4.4",
-    "socket.io": "^4.4.1"
+    "socket.io": "^4.4.1",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.13",
     "@types/luxon": "^3.4.2",
     "@types/socket.io": "^3.0.2",
+    "@types/uuid": "^10.0.0",
+    "nodemon": "^3.1.4",
     "ts-node": "^10.8.1",
     "typescript": "~5.5.4"
   }
