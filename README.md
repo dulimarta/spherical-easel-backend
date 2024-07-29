@@ -13,7 +13,7 @@ npx nodemon
 Build a docker image by typing the following from the project root directory:
 
 ```bash
-docker build -t se-backend .
+docker build -t DDDDDDDD/easelgeo-session .
 ```
 
 To see the details of the Docker image type the following command (requires [Docker desktop](https://www.docker.com/get-started/) installed on your computer):
@@ -25,30 +25,48 @@ docker image ls
 Then launch a container from the image just built:
 
 ```bash
-docker run -it -p 4444:4000 --rm --name se-backend-server se-backend
+docker run -it -p 4444:4000 --rm DDDDDDDD/easelgeo-session
 ```
 
 In the above command:
 
-
+* The option `-i` (or `--interactive`) keeps the STDIN open
+* The option `-t` (or `--tty`) allocates a pseudo terminal
 * The container (internal) port 4000 is mapped to the host (your local computer) port 4444
-* `se-backend` is the name of the image
-* `se-backend-server` is the name of the container. Without the `--name se-backend-server` option, Docker will generate a unique name for the container.
+* The 
+* `easelgeo-session` is the name of the image (pulled from its owner DDDDDDDD)
 
 To verify the backend server is running, type the following URL on your browser:
 
 ```
-localhost:4444/geo/sessions
+localhost:4444/sessions
 ```
 
 It should print "No active sessions detected"
 
-To stop the running container you can either press Ctrl-C or type the following command:
+## Terminate the backend server
 
-```bash
+To stop the running container you can either press Ctrl-C or 
+
+* List all the running containers on your machine
+
+  ```bash
+  docker ps
+  ```
+
+  Search for `easeogeo-session` under the `IMAGE` column and look for the associated
+  container id
+
+* Stop the container by 
+
+  ```
+  docker stop _the_container_id_
+  ```
+
+
 docker stop se-backend-server
 ```
-## Deployment to Heroku
+## Deployment to Heroku (Obsolete)
 
 1. Download [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli#install-the-heroku-cli)
 2. Login to Heroku

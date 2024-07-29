@@ -39,12 +39,12 @@ server_io.of("/").adapter.on("delete-room", (room) => {
 
 server_io.of("/").adapter.on("join-room", (room, who) => {
   if (who !== room) console.debug(`Socket ${who} just joined room ${room}`);
-  else console.debug(`Socket ${who} just joined its own room`);
+  // else console.debug(`Socket ${who} just joined its own room`);
 });
 
 server_io.of("/").adapter.on("leave-room", (room, who) => {
   if (who !== room) console.debug(`Socket ${who} just left room ${room}`);
-  else console.debug(`Socket ${who} just left its own room`);
+  // else console.debug(`Socket ${who} just left its own room`);
 });
 
 server_io.on("connection", (socket: Socket) => {
@@ -89,7 +89,9 @@ server_io.on("connection", (socket: Socket) => {
         participants: [],
         socketId: socket.id,
       });
-      // socket.join(studioId)
+      // The instructor should join its own studio so it can listen
+      // to arriving participants
+      socket.join(studioId)
       // socket.join(`chat-${studioId}`);
 
       console.debug("Sending response back to teacher client", studioId);
@@ -175,12 +177,14 @@ server_io.on("connection", (socket: Socket) => {
         (s) => s.id === arg.session
       );
       if (sessionIndex < 0) {
+        console.debug("student-leave: studio does not exist")
         responseFn(false);
       } else {
         const participantIndex = availableStudios[
           sessionIndex
         ].participants.findIndex((p) => p.name === arg.who || p.socketId === arg.socketId);
         if (participantIndex < 0) {
+          console.debug("student-leave: participant does not exist")
           responseFn(false);
         } else {
           availableStudios[sessionIndex].participants.splice(

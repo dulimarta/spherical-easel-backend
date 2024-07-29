@@ -1,7 +1,7 @@
 #
 # To build the image locally, run the following command from the PARENT of this directory
 #
-# docker build -f Dockerfile.web .
+# docker build --tag DDDDDDDD/easelgeo-session .
 
 FROM node:14
 
@@ -15,7 +15,7 @@ COPY tsconfig.json .
 # /usr/web/app/server/geo.ts
 # /usr/web/app/src/firebase-backend.ts
 COPY geo.ts .
-COPY firebase-backend.ts .
+# COPY firebase-backend.ts .
 
 RUN npm install && (cd /usr/web/app && npx tsc)
 
