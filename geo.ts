@@ -265,10 +265,10 @@ my_server.on('request', (req, res) => {
   console.log("Incoming request", req.headers)
 })
 my_server.on('connect', (req, sock) => {
-  console.log("HTTP server connect", req.headers, "on Socket", sock)
+  console.log("HTTP server connect", req.headers, "on Socket")
 })
 my_server.on('connection', (str) => {
-  console.log("HTTP server connection", str)
+  console.log(`HTTP server connection |${str.localAddress}:${str.localPort}|`)
 })
 my_server.listen(port, () => {
   console.log(`ExpressJS server listening on port ${port}`);
