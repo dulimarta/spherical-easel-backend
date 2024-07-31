@@ -108,10 +108,10 @@ server_io.on("connection", (socket: Socket) => {
     console.debug("Server received 'close-studio' event", studioId);
     const pos = availableStudios.findIndex((s) => s.id === studioId);
     if (pos >= 0) {
-      console.debug("About to delete studio", availableStudios[pos].name);
+      //console.debug("About to delete studio", availableStudios[pos].name);
       availableStudios.splice(pos, 1);
     } else {
-      console.debug(`Studio ${studioId} does not exist`);
+      //console.debug(`Studio ${studioId} does not exist`);
     }
     socket.leave(studioId);
     server_io.in(studioId).emit("studio-end");
@@ -130,7 +130,6 @@ server_io.on("connection", (socket: Socket) => {
   socket.on("notify-all", (arg: { room: string; message: string }) => {
     console.debug("Server received 'notify-all", arg.room);
     if (arg.room.startsWith("chat:")) {
-      console.debug(`Relay ${arg.message} in the chat room ${arg.room}`);
       socket.to(arg.room).emit("chat-msg", arg.message);
     } else if (arg.room.startsWith("cmd:"))
       socket.to(arg.room).emit("exec-cmd", arg.message);
@@ -138,7 +137,9 @@ server_io.on("connection", (socket: Socket) => {
 
   /* Events that originate at a student */
   socket.on("studio-query", (responseFn) => {
-    console.debug("Get studio query request....");
+    if (process.env.mode !== 'production') {
+      console.debug("Get studio query request....");
+    }
     responseFn(JSON.stringify(availableStudios));
   });
 
@@ -162,14 +163,10 @@ server_io.on("connection", (socket: Socket) => {
   socket.on(
     "student-leave",
     async (arg: { session: string; who: string, socketId: string }, responseFn) => {
-      console.debug(
-        "Server received 'student-leave' by student ",
-        arg.who,
-        "from studio",
-        arg.session,
-        "on socket",
-        socket.id
-      );
+      if (process.env.mode !== 'production') {
+        console.debug("Server received 'student-leave' by student ",
+          arg.who, "from studio", arg.session, "on socket", socket.id);
+      }
       server_io.in(arg.session).emit("drop-participant", arg.who);
       socket.leave(arg.session);
 
@@ -177,14 +174,18 @@ server_io.on("connection", (socket: Socket) => {
         (s) => s.id === arg.session
       );
       if (sessionIndex < 0) {
-        console.debug("student-leave: studio does not exist")
+        if (process.env.mode !== 'production') {
+          console.debug("student-leave: studio does not exist")
+        }
         responseFn(false);
       } else {
         const participantIndex = availableStudios[
           sessionIndex
         ].participants.findIndex((p) => p.name === arg.who || p.socketId === arg.socketId);
         if (participantIndex < 0) {
-          console.debug("student-leave: participant does not exist")
+          if (process.env.mode !== 'production') {
+            console.debug("student-leave: participant does not exist")
+          }
           responseFn(false);
         } else {
           availableStudios[sessionIndex].participants.splice(
@@ -211,8 +212,10 @@ router.get("/sessions", (req: Request, res: Response) => {
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
   const rooms = server_io.of("/").adapter.rooms;
   const sids = server_io.of("/").adapter.sids
-  console.debug("Incoming request is", req.originalUrl);
-  console.debug("Rooms", rooms);
+  if (process.env.mode !== 'production') {
+    console.debug("Incoming request is", req.originalUrl);
+    console.debug("Rooms", rooms);
+  }
 
   if (rooms.size > 0) {
     res.write("<h1>List of rooms</h1>");
@@ -255,9 +258,18 @@ router.get("/studios", (req: Request, res: Response) => {
 
 // The last component of the path below must match the
 // File name under src/app-server
-app.use("/.netlify/functions/geo", router);
+// app.use("/.netlify/functions/geo", router);
 app.use("/", router);
 const port = process.env.PORT || 4000;
+my_server.on('request', (req, res) => {
+  console.log("Incoming request", req.headers)
+})
+my_server.on('connect', (req, sock) => {
+  console.log("HTTP server connect", req.headers, "on Socket", sock)
+})
+my_server.on('connection', (str) => {
+  console.log("HTTP server connection", str)
+})
 my_server.listen(port, () => {
   console.log(`ExpressJS server listening on port ${port}`);
 });
