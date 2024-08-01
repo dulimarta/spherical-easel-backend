@@ -11,7 +11,7 @@ const my_server = createServer(app);
 
 const server_io = new Server(my_server, {
   cors: {
-    origin: "http://localhost:8080",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
