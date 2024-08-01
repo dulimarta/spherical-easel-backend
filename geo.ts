@@ -213,8 +213,8 @@ router.get("/sessions", (req: Request, res: Response) => {
   const rooms = server_io.of("/").adapter.rooms;
   const sids = server_io.of("/").adapter.sids
   if (process.env.mode !== 'production') {
-    console.debug("Incoming request is", req.originalUrl);
-    console.debug("Rooms", rooms);
+    console.debug("Incoming HTTP request");
+    // console.debug("Rooms", rooms);
   }
 
   if (rooms.size > 0) {
