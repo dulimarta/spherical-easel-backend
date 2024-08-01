@@ -4,14 +4,13 @@ import { Socket, Server } from "socket.io";
 import { v1 as uuidv1 } from "uuid";
 // import firebase from "firebase";
 // import { firebaseFirestore } from "./firebase-backend";
-import { DateTime } from "luxon";
 const app = express();
 const router = express.Router();
 const my_server = createServer(app);
 
 const server_io = new Server(my_server, {
   cors: {
-    origin: ["https://easelgeo-server.herokuapp.com", "localhost:8080"],
+    origin: "*",
   },
 });
 
@@ -259,18 +258,10 @@ router.get("/studios", (req: Request, res: Response) => {
 // File name under src/app-server
 // app.use("/.netlify/functions/geo", router);
 app.use("/", router);
-my_server.on('request', (req, res) => {
-  console.log("Incoming request", req.headers)
-})
-my_server.on('connect', (req, sock) => {
-  console.log("HTTP server connect", req.headers, "on Socket")
-})
-my_server.on('connection', (str) => {
-  console.log(`HTTP server connection |${str.localAddress}:${str.localPort}|`)
-})
-//if (module === require.main) {
+
+if (module === require.main) {
   const PORT = process.env.PORT || 4000;
   my_server.listen(PORT, () => {
     console.log(`SE app server listening on port ${PORT}`);
   });
-//}
+}
