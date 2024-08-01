@@ -11,8 +11,7 @@ const my_server = createServer(app);
 
 const server_io = new Server(my_server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
+    origin: ["https://easelgeo-server.herokuapp.com", "localhost:8080"],
   },
 });
 
@@ -269,9 +268,9 @@ my_server.on('connect', (req, sock) => {
 my_server.on('connection', (str) => {
   console.log(`HTTP server connection |${str.localAddress}:${str.localPort}|`)
 })
-if (module === require.main) {
+//if (module === require.main) {
   const PORT = process.env.PORT || 4000;
   my_server.listen(PORT, () => {
     console.log(`SE app server listening on port ${PORT}`);
   });
-}
+//}
